@@ -1,0 +1,59 @@
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+import matplotlib.pyplot as plt
+​
+from tensorflow.keras import layers, losses
+from tensorflow.keras.datasets import fashion_mnist
+from tensorflow.keras.models import Model
+(x_train, _), (x_test, _) = fashion_mnist.load_data()
+len(x_train)
+x_train.shape
+x_train = x_train/255.
+x_test = x_test/255.
+
+latent_dim = 64
+class Autoencoder(Model):
+    def __init__(self, latent_dim):
+        super(Autoencoder, self).__init__()        
+        self.latent_dim = latent_dim
+       
+        self.encoder = tf.keras.Sequential([
+            layers.Flatten(),
+            layers.Dense(latent_dim, activation='relu')
+        ])
+        self.decoder = tf.keras.Sequential([
+            layers.Dense(784, activation='sigmoid'),
+            layers.Reshape((28,28))
+        ])
+        
+    def call(self, inputs):
+        encoded = self.encoder(inputs)
+        decoded = self.decoder(encoded)
+        return decoded
+
+autoencoder = Autoencoder(latent_dim)
+autoencoder.compile(optimizer='adam', loss='mae')
+
+history = autoencoder.fit(
+    x_train, x_train,
+    validation_data=(x_test, x_test),
+    epochs=10
+)
+encoded_img = autoencoder.encoder(x_test).numpy()
+decoded_img = autoencoder.decoder(encoded_img).numpy()
+
+n = 10
+plt.figure(figsize=(20,4,))
+for i in range(n):
+ 
+    ax = plt.subplot(2,n, i+1)
+    plt.imshow(x_test[i])
+    plt.title("original")
+    plt.gray()
+    
+    ax = plt.subplot(2,n, i+1+n)
+    plt.imshow(decoded_img[i])
+    plt.title("original")
+    plt.gray()
+plt.show() 

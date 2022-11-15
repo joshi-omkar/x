@@ -1,0 +1,62 @@
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+import keras.backend as K
+
+from keras.models import Sequential
+from keras.preprocessing import *
+from keras.layers import *
+from keras.preprocessing.text import *
+from keras.utils import *
+import gensim
+
+data = open('E:/BE1/DL/covid.txt', 'r')
+covid_data = [text for text in data if text.count("") >= 2]
+vectorize = Tokenizer()
+vectorize.fit_on_texts(covid_data)
+covid_data = vectorize.texts_to_sequences(covid_data)
+total_vocab = sum(len(s) for s in covid_data)
+word_count = len(vectorize.word_index) + 1
+window_size = 2
+
+def cbow_model(data, window_size, total_vocab):
+    total_length = window_size*2
+    
+    for text in data:
+        text_len = len(data)
+        for idx, word in enumerate(text):
+            context_word = []
+            target = []
+            begin = idx-window_size
+            end = idx + window_size+1
+            context_word.append([text[i] for i in range(begin, end) if 0<=i < text_len and i != idx ])
+            target.append(word)
+            contextual = sequence.pad_sequence(context_word, total_length = total_len)
+
+            final_target = np_utils.to_categorical(target, total_vocab)
+            yield(contextual, final_target)
+
+model = Sequential()
+model.add(Embedding(input_dim = total_vocab, output_dim = 100, input_length=window_size*2))
+model.add(Lambda(lambda x : K.mean(x, axis = 0), output_shape=(100,)))
+model.add(Dense(total_vocab, activation='softmax'))
+model.compile(loss="categorical_crossentropy", optimizer='adam')
+
+for i in range(10):
+  cost = 0
+  for x, y in cbow_model(data, window_size, total_vocab):
+    cost+= model.test_on_batch(contextual, final_target)
+  print(i, 0)
+
+dimentions = 100
+vect_file = open('E:/BE1/DL/vector.txt', 'w')
+vect_file.write('{} {}\n'.format(101, dimentions))
+
+weights = model.get_weights()[0]
+for text, i in vectorize.word_index.items():
+    final_vec = ' '.join(map(str, list(weights[i, :])))
+    vect_file.write('{} {}\n'.format(text, final_vec))
+vect_file.close()
+
+cbow_output = gensim.models.KeyedVectors.load_word2vec_format('E:/BE1/DL/vector.txt', binary=False)
+cbow_output.most_similar(positive=['virus'])
